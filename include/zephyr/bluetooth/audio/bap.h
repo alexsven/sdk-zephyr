@@ -180,9 +180,8 @@ extern "C" {
 		.rtn = _rtn,                                                                       \
 		IF_ENABLED(UTIL_OR(IS_ENABLED(CONFIG_BT_BAP_BROADCAST_SOURCE),                     \
 				   IS_ENABLED(CONFIG_BT_BAP_UNICAST)),                             \
-			   (.latency = _latency,))                                                 \
-		.pd = _pd,                                                                         \
-	})
+			   (.latency = _latency,)) .pd = _pd,                     \
+		})
 
 /** @brief QoS Framing */
 enum bt_bap_qos_cfg_framing {
@@ -341,9 +340,14 @@ struct bt_bap_qos_cfg {
 #define BT_BAP_QOS_CFG_PREF(_unframed_supported, _phy, _rtn, _latency, _pd_min, _pd_max,           \
 			    _pref_pd_min, _pref_pd_max)                                            \
 	{                                                                                          \
-		.unframed_supported = _unframed_supported, .phy = _phy, .rtn = _rtn,               \
-		.latency = _latency, .pd_min = _pd_min, .pd_max = _pd_max,                         \
-		.pref_pd_min = _pref_pd_min, .pref_pd_max = _pref_pd_max,                          \
+		.unframed_supported = _unframed_supported,                                         \
+		.phy = _phy,                                                                       \
+		.rtn = _rtn,                                                                       \
+		.latency = _latency,                                                               \
+		.pd_min = _pd_min,                                                                 \
+		.pd_max = _pd_max,                                                                 \
+		.pref_pd_min = _pref_pd_min,                                                       \
+		.pref_pd_max = _pref_pd_max,                                                       \
 	}
 
 /** @brief Audio Stream Quality of Service Preference structure. */
@@ -457,7 +461,7 @@ enum bt_bap_bass_att_err {
 };
 
 /** Value indicating that the periodic advertising interval is unknown */
-#define BT_BAP_PA_INTERVAL_UNKNOWN             0xFFFF
+#define BT_BAP_PA_INTERVAL_UNKNOWN 0xFFFF
 
 /**
  * @brief Broadcast Assistant no BIS sync preference
@@ -623,7 +627,11 @@ struct bt_bap_ascs_rsp {
  * @param r Reason field - @ref bt_bap_ascs_reason or @ref bt_audio_metadata_type (see notes in
  *          @ref bt_bap_ascs_rsp).
  */
-#define BT_BAP_ASCS_RSP(c, r) (struct bt_bap_ascs_rsp) { .code = c, .reason = r }
+#define BT_BAP_ASCS_RSP(c, r)                                                                      \
+	(struct bt_bap_ascs_rsp)                                                                   \
+	{                                                                                          \
+		.code = c, .reason = r                                                             \
+	}
 
 /** @brief Abstract Audio Broadcast Source structure. */
 struct bt_bap_broadcast_source;
@@ -906,15 +914,12 @@ struct bt_bap_stream {
 	/** Stream user data */
 	void *user_data;
 
-#if defined(CONFIG_BT_BAP_UNICAST_CLIENT) || defined(__DOXYGEN__)
-	/** @cond INTERNAL_HIDDEN */
-	/**
-	 * @brief Audio ISO reference
+	/** ISO channel reference
 	 *
-	 * This is only used for Unicast Client streams, and is handled internally.
+	 * This will become valid once the stream is added to a group (bt_bap_unicast_group,
+	 * bt_bap_broadcast_source or bt_bap_broadcast_sink).
 	 */
-	struct bt_bap_iso *bap_iso;
-#endif /* CONFIG_BT_BAP_UNICAST_CLIENT */
+	struct bt_iso_chan *iso;
 
 	/** Unicast or Broadcast group - Used internally */
 	void *group;
@@ -2586,8 +2591,7 @@ int bt_bap_scan_delegator_unregister(void);
  *
  * @return int    Error value. 0 on success, errno on fail.
  */
-int bt_bap_scan_delegator_set_pa_state(uint8_t src_id,
-				       enum bt_bap_pa_state pa_state);
+int bt_bap_scan_delegator_set_pa_state(uint8_t src_id, enum bt_bap_pa_state pa_state);
 
 /**
  * @brief Set the sync state of a receive state in the server
@@ -2708,8 +2712,7 @@ typedef bool (*bt_bap_scan_delegator_state_func_t)(
  * @param func      The callback function
  * @param user_data User specified data that sent to the callback function
  */
-void bt_bap_scan_delegator_foreach_state(bt_bap_scan_delegator_state_func_t func,
-					 void *user_data);
+void bt_bap_scan_delegator_foreach_state(bt_bap_scan_delegator_state_func_t func, void *user_data);
 
 /**
  * @brief Find and return a receive state based on a compare function
@@ -2719,8 +2722,8 @@ void bt_bap_scan_delegator_foreach_state(bt_bap_scan_delegator_state_func_t func
  *
  * @return The first receive state where the @p func returned true, or NULL
  */
-const struct bt_bap_scan_delegator_recv_state *bt_bap_scan_delegator_find_state(
-	bt_bap_scan_delegator_state_func_t func, void *user_data);
+const struct bt_bap_scan_delegator_recv_state *
+bt_bap_scan_delegator_find_state(bt_bap_scan_delegator_state_func_t func, void *user_data);
 
 /******************************** CLIENT API ********************************/
 
@@ -2730,8 +2733,7 @@ const struct bt_bap_scan_delegator_recv_state *bt_bap_scan_delegator_find_state(
  * @param conn    The connection to the peer device.
  * @param err     Error value. 0 on success, GATT error on fail.
  */
-typedef void (*bt_bap_broadcast_assistant_write_cb)(struct bt_conn *conn,
-						    int err);
+typedef void (*bt_bap_broadcast_assistant_write_cb)(struct bt_conn *conn, int err);
 
 /**
  * @brief Struct to hold the Basic Audio Profile Broadcast Assistant callbacks
@@ -2748,8 +2750,7 @@ struct bt_bap_broadcast_assistant_cb {
 	 *                          GATT error or ERRNO on fail.
 	 * @param recv_state_count  Number of receive states on the server.
 	 */
-	void (*discover)(struct bt_conn *conn, int err,
-			 uint8_t recv_state_count);
+	void (*discover)(struct bt_conn *conn, int err, uint8_t recv_state_count);
 
 	/**
 	 * @brief Callback function for Broadcast Audio Scan Service client scan results
@@ -2760,8 +2761,7 @@ struct bt_bap_broadcast_assistant_cb {
 	 * @param info          Advertiser information.
 	 * @param broadcast_id  24-bit broadcast ID.
 	 */
-	void (*scan)(const struct bt_le_scan_recv_info *info,
-		     uint32_t broadcast_id);
+	void (*scan)(const struct bt_le_scan_recv_info *info, uint32_t broadcast_id);
 
 	/**
 	 * @brief Callback function for when a receive state is read or updated
@@ -2878,8 +2878,7 @@ int bt_bap_broadcast_assistant_discover(struct bt_conn *conn);
  * @retval -ENOMEM Could not allocated memory for the request
  * @retval -ENOEXEC Unexpected scan or GATT error
  */
-int bt_bap_broadcast_assistant_scan_start(struct bt_conn *conn,
-					  bool start_scan);
+int bt_bap_broadcast_assistant_scan_start(struct bt_conn *conn, bool start_scan);
 
 /**
  * @brief Stop remote scanning for BISes for a server.
@@ -2917,7 +2916,6 @@ int bt_bap_broadcast_assistant_register_cb(struct bt_bap_broadcast_assistant_cb 
  * @retval -EALREADY if @p cb was not registered
  */
 int bt_bap_broadcast_assistant_unregister_cb(struct bt_bap_broadcast_assistant_cb *cb);
-
 
 /** Parameters for adding a source to a Broadcast Audio Scan Service server */
 struct bt_bap_broadcast_assistant_add_src_param {
